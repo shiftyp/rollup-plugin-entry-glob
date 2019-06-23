@@ -25,6 +25,7 @@ module.exports = {
 		buble({
 			transforms: {
 				asyncAwait: false,
+				dangerousForOf: true,
 			},
 		}),
 		terser({

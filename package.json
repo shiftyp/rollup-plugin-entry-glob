@@ -1,6 +1,6 @@
 {
   "name": "rollup-plugin-entry-glob",
-  "version": "0.1.0-alpha0",
+  "version": "0.2.0-alpha0",
   "description": "Flexible way to use globs as entry points for rollup",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -16,6 +16,7 @@
   "license": "MIT",
   "devDependencies": {
     "babel-eslint": "^10.0.2",
+    "better-assert": "^1.0.2",
     "eslint": "^5.16.0",
     "esm": "^3.2.25",
     "mocha": "^6.1.4",

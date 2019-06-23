@@ -1,117 +1,96 @@
-import { ok } from 'assert';
+/* eslint-disable no-undef */
+import assert from 'better-assert';
 import { rollup } from 'rollup';
-import entryGlob from '../dist/';
+import plugin from '../dist';
 
 
-const fileName = 'index';
+const fixtures = 'test/fixtures/';
+const entryA = `${fixtures}a.js`;
+const entryB = `${fixtures}b.js`;
+// const entryC = `${fixtures}c.js`;
+const globA = `${fixtures}{a,}.js`;
+const globB = `${fixtures}{b,}.js`;
+const globC = `${fixtures}{c,}.js`;
+const globAB = `${fixtures}{a,b}.js`;
+const globAll = `${fixtures}*.js`;
+
+const outputA = 'exports.a = a;';
+const outputB = 'exports.b = b;';
+const outputC = 'console.log("La la la!");';
 
 
-function includes(string, substring) {
-	if (!string.includes(substring)) {
-		ok(false, `expected ${JSON.stringify(string)} to include ${JSON.stringify(substring)}}`);
-	}
-}
+const codeIncludes = (output, string) => output.map(({ code }) => code.includes(string)).some((result) => result);
+const codeDoesNotInclude = (output, string) => output.map(({ code }) => code.includes(string)).every((result) => !result);
+const chunkIncludes = (output, chunkName, string) => output[output.map(({ name }) => name).indexOf(chunkName)].code.includes(string);
+const fileNamesAre = (output, fileNames, length) => output.length === length && output.map(({ name }) => fileNames.includes(name)).every((result) => result);
 
 
-function doesNotInclude(string, substring) {
-	if (string.includes(substring)) {
-		ok(false, `expected ${JSON.stringify(string)} NOT to include ${JSON.stringify(substring)}}`);
-	}
-}
-
-
-function getOutput(entries, pluginOptions = { fileName }) {
-	return rollup({ input: entries, plugins: [entryGlob(pluginOptions)]})
-		.then((bundle) => bundle.generate({ format: 'cjs' }))
-		.then((output) => {
-			const ret = [];
-			if (output.output) {
-				for (let obj of output.output) {
-					ret.push({
-						fileName: obj.fileName,
-						code: obj.code || '',
-					});
-				}
-			} else{
-				ret.push({
-					fileName: output.fileName,
-					code: output.code || '',
-				});
-			}
-			return ret;
-		});
-}
+const run = (entries = [], fileName, options = {}, chunks = {}) => rollup({
+	input: entries,
+	manualChunks: chunks,
+	plugins: [plugin({ fileName: fileName || 'bundle', ...options })],
+}).then((bundle) => bundle.generate({ format: 'cjs', chunkFileNames: '[name].js' }))
+	.then((output) => {
+		const ret = [];
+		if (output.output) {
+			for (let obj of output.output) ret.push({ name: obj.fileName, code: obj.code });
+		}
+		else ret.push({ name: output.fileName, code: output.code });
+		return ret;
+	});
 
 
 describe('rollup-plugin-entry-glob', () => {
-	it('Takes a single file as input', () => {
-		getOutput('test/fixtures/a.js')
-			.then((output) => output.map(({ code }) => includes(code, 'exports.a = a;')));
+	it('Takes a single file as input', async () => {
+		assert(codeIncludes(await run(entryA), outputA));
 	});
 
-	it('Takes an array of files as input', () => {
-		getOutput(['test/fixtures/a.js', 'test/fixtures/b.js'])
-			.then((output) => output.map(({ code }) => {
-				includes(code, 'exports.a = a;');
-				includes(code, 'exports.b = b;');
-			}));
+	it('Takes an array of files as input', async () => {
+		assert(codeIncludes(await run([entryA, entryB]), outputA));
+		assert(codeIncludes(await run([entryA, entryB]), outputB));
 	});
 
-	it('Allows empty array as input', () => {
-		getOutput([]).then((output) => output.map(({ code }) => doesNotInclude(code, 'exports')));
+	it('Allows an empty array as input', async () => {
+		assert(codeDoesNotInclude(await run([]), 'exports'));
 	});
 
-	it('Takes glob as input', () => {
-		getOutput('test/fixtures/{a,}.js')
-			.then((output) => output.map(({ code }) => includes(code, 'exports.a = a;')));
+	it('Takes a glob pattern as input', async () => {
+		assert(codeIncludes(await run(globA), outputA));
 	});
 
-	it('Takes array of globs as input', () => {
-		getOutput(['test/fixtures/{a,}.js', 'test/fixtures/{b,}.js'])
-			.then((output) => output.map(({ code }) => {
-				includes(code, 'exports.a = a;');
-				includes(code, 'exports.b = b;');
-			}));
+	it('Takes an array of glob patterns as input', async () => {
+		assert(codeIncludes(await run([globA, globB]), outputA));
+		assert(codeIncludes(await run([globA, globB]), outputB));
 	});
 
-	it('Allows to prevent exporting', () => {
-		getOutput('test/fixtures/*.js', { fileName, exports: false })
-			.then((output) => output.map(({ code }) => {
-				includes(code, 'console.log("La la la!");');
-				doesNotInclude(code, 'exports.a = a;');
-				doesNotInclude(code, 'exports.b = b;');
-				doesNotInclude(code, 'exports.c = c;');
-			}));
+	it('Allows to prevent exporting', async () => {
+		assert(codeIncludes(await run(globAll, null, { exports: false }), outputC));
+		assert(codeDoesNotInclude(await run(globAll, null, { exports: false }), outputA));
+		assert(codeDoesNotInclude(await run(globAll, null, { exports: false }), outputB));
 	});
 
-	it('Allows naming combined bundle', () => {
-		getOutput('test/fixtures/*.js', { fileName: 'testing' })
-			.then((output) => output.map(({ fileName }) => includes(fileName, 'testing')));
+	it('Allows to name combined bundle', async () => {
+		assert(fileNamesAre(await run(globAll, 'test'), ['test.js'], 1));
 	});
 
-	it('Allows for code splitting with include/exclude', () => {
-		getOutput('test/fixtures/*.js', { exclude: '**/c.js', fileName })
-			.then((output) => {
-				const names = output.map(({ fileName }) => fileName);
-				if (output.length !== 2) {
-					ok(false, 'Expected 2 bundles');
-				}
-				if (!names.includes('c.js') || !names.includes('_index.js')) {
-					ok(false, 'Bundle names don\'t match');
-				}
-			});
+	it('Allows for code-splitting with include/exclude', async () => {
+		assert(fileNamesAre(await run(globAll, 'test', { exclude: globC }), ['test.js', 'c.js'], 2));
 	});
 
-	it('Allows to disable combining of entry points', () => {
-		getOutput('test/fixtures/*.js', { fileName, exclude: '**/*' })
-			.then((output) => {
-				const names = output.map(({ fileName }) => fileName);
-				if (output.length !== 4) {
-					ok(false, 'Expected 3 bundles');
-				}
-				if (!names.includes('a.js') || !names.includes('b.js') || !names.includes('c.js')) {
-					ok(false, 'Bundle names don\'t match');
-				}
-			});
+	it('Allows to disable combining of entry points', async () => {
+		assert(fileNamesAre(await run(globAll, 'test', { exclude: '**/*' }), ['a.js', 'b.js', 'c.js'], 3));
+	});
+
+	it('Allows to selectively exclude files', async () => {
+		assert(codeIncludes(await run([globAll, `!${globB}`]), outputA));
+		assert(codeIncludes(await run([globAll, `!${globB}`]), outputC));
+		assert(codeDoesNotInclude(await run([globAll, `!${globB}`]), outputB));
+	});
+
+	it('Works with manualChunks option', async () => {
+		assert(fileNamesAre(await run(globAll, '1', { include: globC }, { '2': globAB }), ['1.js', '2.js'], 2));
+		assert(chunkIncludes(await run(globAll, '1', { include: globC }, { '2': globAB }), '1.js', outputC));
+		assert(chunkIncludes(await run(globAll, '1', { include: globC }, { '2': globAB }), '2.js', outputA));
+		assert(chunkIncludes(await run(globAll, '1', { include: globC }, { '2': globAB }), '2.js', outputB));
 	});
 });
