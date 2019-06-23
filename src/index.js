@@ -7,6 +7,17 @@ const entry = '\0rollup-plugin-entry-glob:single-entry';
 const suppressed = '\0rollup-plugin-entry-glob:suppressed';
 
 
+const sortArray = (arr) => {
+	const scriptOrder = ['js', 'mjs', 'jsx', 'es', 'es6', 'ts', 'tsx', 'json'].reverse();
+	const assetOrder = ['html', 'htm', 'php', 'css', 'scss', 'sass', 'less', 'png', 'jpg', 'jpeg', 'gif', 'svg'];
+	return arr.sort((a, b) => {
+		const aExt = a.split('.').pop();
+		const bExt = b.split('.').pop();
+		return (-scriptOrder.indexOf(aExt) + assetOrder.indexOf(aExt)) - (-scriptOrder.indexOf(bExt) + assetOrder.indexOf(bExt));
+	});
+};
+
+
 export default function entryGlob(options) {
 	const module = options.fileName
 		? `\0${options.fileName}`
@@ -28,25 +39,27 @@ export default function entryGlob(options) {
 		options(config) {
 			const ret = [module, suppressed];
 			const chunks = {};
-			for (let [ chunk, patterns ] of Object.entries(config.manualChunks)) {
-				chunks[chunk] = [];
-				matched.sync(patterns, { realpath: true })
-					.forEach((path) => {
-						chunks[chunk].push(path);
-						chunked.push(path);
-					});
+			if (config.manualChunks) {
+				for (let [ chunk, patterns ] of Object.entries(config.manualChunks)) {
+					chunks[chunk] = [];
+					matched.sync(patterns, { realpath: true })
+						.forEach((path) => {
+							chunks[chunk].push(path);
+							chunked.push(path);
+						});
+				}
 			}
 			if (config.input && config.input !== module) {
 				matched.sync(config.input, { realpath: true })
 					.forEach((path) => {
 						if (!chunked.includes(path)) {
 							if (filter(path)) imports.push(path);
-							else ret.push(path);
+							ret.push(path);
 						}
 					});
 			}
 			config.manualChunks = chunks;
-			config.input = ret;
+			config.input = sortArray(ret);
 		},
 
 		resolveId(id) {
@@ -72,6 +85,13 @@ export default function entryGlob(options) {
 			bundle[fileName].fileName = `${module.replace('\0', '')}.js`;
 			if (!imports.length) delete bundle[fileName];
 			delete bundle[`${suppressed.replace('\0', '_')}.js`];
+			for (let [name, chunk] of Object.entries(bundle)) {
+				if (imports.includes(chunk.facadeModuleId)
+						&& (chunk.code === '\n' || chunk.code === '\r\n')
+						&& chunk.isEntry) {
+					delete bundle[name];
+				}
+			}
 		},
 	};
 }
