@@ -84,11 +84,14 @@ export default function entryGlob(options) {
 			const fileName = `${module.replace('\0', '_')}.js`;
 			bundle[fileName].fileName = `${module.replace('\0', '')}.js`;
 			if (!imports.length) delete bundle[fileName];
+			// I'm pretty sure this test is only valid when using
+			// rollup-plugin-iife
+			if (/\(function\s*\(\)\s*\{\s*\}\)\(\);/g.test(bundle[fileName].code)) delete bundle[fileName];
 			delete bundle[`${suppressed.replace('\0', '_')}.js`];
+			// Get rid of empty bundles when using non-javascript files
+			// as entry points
 			for (let [name, chunk] of Object.entries(bundle)) {
-				if (imports.includes(chunk.facadeModuleId)
-						&& (chunk.code === '\n' || chunk.code === '\r\n')
-						&& chunk.isEntry) {
+				if (imports.includes(chunk.facadeModuleId) && chunk.isEntry) {
 					delete bundle[name];
 				}
 			}
