@@ -1,2 +1,114 @@
-import{createFilter as e}from"rollup-pluginutils";import n from"matched";var r="entry-glob",t="\0rollup-plugin-entry-glob:single-entry",s="\0rollup-plugin-entry-glob:suppressed",o=function(e){var n=["js","mjs","jsx","es","es6","ts","tsx","json"].reverse(),r=["html","htm","php","css","scss","sass","less","png","jpg","jpeg","gif","svg"];return e.sort(function(e,t){var s=e.split(".").pop(),o=t.split(".").pop();return-n.indexOf(s)+r.indexOf(s)-(-n.indexOf(o)+r.indexOf(o))})};export default function(i){var l=i.fileName?"\0"+i.fileName:t,u=i.include||i.exclude?e(i.include,i.exclude):e("**/*"),p=[],a=[],c=function(e){return"export * from "+JSON.stringify(e)+";"},f=function(e){return"import "+JSON.stringify(e)+";"};return i.exports=void 0===i.exports||!0===i.exports,{name:r,options:function(e){var r=[l,s],t={};if(e.manualChunks)for(var i=function(){var e=f[c],r=e[0],s=e[1];t[r]=[],n.sync(s,{realpath:!0}).forEach(function(e){t[r].push(e),a.push(e)})},c=0,f=Object.entries(e.manualChunks);c<f.length;c+=1)i();e.input&&e.input!==l&&n.sync(e.input,{realpath:!0}).forEach(function(e){a.includes(e)||(u(e)&&p.push(e),r.push(e))}),e.manualChunks=t,e.input=o(r)},resolveId:function(e){return e===l?l:e===s?s:null},load:async function(e){return e===l?p.length?Promise.resolve(i.exports?p.map(c).join("\n"):p.map(f).join("\n")):Promise.resolve(""):e===s?a.length?Promise.resolve(a.map(c).join("\n")):Promise.resolve(""):void 0},generateBundle:async function(e,n){var r=l.replace("\0","_")+".js";n[r].fileName=l.replace("\0","")+".js",p.length||delete n[r],/\(function\s*\(\)\s*\{\s*\}\)\(\);/g.test(n[r].code)&&delete n[r],delete n[s.replace("\0","_")+".js"];for(var t=0,o=Object.entries(n);t<o.length;t+=1){var i=o[t],u=i[0],a=i[1];p.includes(a.facadeModuleId)&&a.isEntry&&delete n[u]}}}}
+import { createFilter } from 'rollup-pluginutils';
+import matched from 'matched';
+
+var name = 'entry-glob';
+var entry = '\0rollup-plugin-entry-glob:single-entry';
+var suppressed = '\0rollup-plugin-entry-glob:suppressed';
+
+
+var sortArray = function (arr) {
+	var scriptOrder = ['js', 'mjs', 'jsx', 'es', 'es6', 'ts', 'tsx', 'json'].reverse();
+	var assetOrder = ['html', 'htm', 'php', 'css', 'scss', 'sass', 'less', 'png', 'jpg', 'jpeg', 'gif', 'svg'];
+	return arr.sort(function (a, b) {
+		var aExt = a.split('.').pop();
+		var bExt = b.split('.').pop();
+		return (-scriptOrder.indexOf(aExt) + assetOrder.indexOf(aExt)) - (-scriptOrder.indexOf(bExt) + assetOrder.indexOf(bExt));
+	});
+};
+
+
+function entryGlob(options) {
+	var module = options.fileName
+		? ("\u0000" + (options.fileName))
+		: entry;
+	var filter = options.include || options.exclude
+		? createFilter(options.include, options.exclude)
+		: createFilter('**/*');
+	var imports = [];
+	var chunked = [];
+	var exporter = function (path) { return ("export * from " + (JSON.stringify(path)) + ";"); };
+	var importer = function (path) { return ("import " + (JSON.stringify(path)) + ";"); };
+	options.exports = options.exports === undefined || options.exports === true
+		? true
+		: false;
+
+	return {
+		name: name,
+
+		options: function options(config) {
+			var ret = [];
+			var chunks = {};
+			if (config.manualChunks) {
+				var loop = function () {
+					var ref = list[i];
+					var chunk = ref[0];
+					var patterns = ref[1];
+
+					chunks[chunk] = [];
+					matched.sync(patterns, { realpath: true })
+						.forEach(function (path) {
+							chunks[chunk].push(path);
+							chunked.push(path);
+						});
+				};
+
+				for (var i = 0, list = Object.entries(config.manualChunks); i < list.length; i += 1) loop();
+			}
+			if (config.input && config.input !== module) {
+				matched.sync(config.input, { realpath: true })
+					.forEach(function (path) {
+						if (!chunked.includes(path)) {
+							if (filter(path)) { imports.push(path); }
+							else { ret.push(path); }
+						}
+					});
+			}
+			config.manualChunks = chunks;
+			config.input = Object.entries(chunks).length
+				? [module, suppressed ].concat( sortArray(ret))
+				: [module ].concat( sortArray(ret));
+		},
+
+		resolveId: function resolveId(id) {
+			if (id === module) { return module; }
+			if (id === suppressed) { return suppressed; }
+			return null;
+		},
+
+		load: async function load(id) {
+			if (id === module) {
+				if (!imports.length) { return Promise.resolve(''); }
+				return Promise.resolve(options.exports
+					? imports.map(exporter).join('\n')
+					: imports.map(importer).join('\n'));
+			} else if (id === suppressed) {
+				if (!chunked.length) { return Promise.resolve(''); }
+				return Promise.resolve(chunked.map(exporter).join('\n'));
+			}
+		},
+
+		generateBundle: async function generateBundle(config, bundle) {
+			var fileName = (module.replace('\0', '_')) + ".js";
+			bundle[fileName].fileName = (module.replace('\0', '')) + ".js";
+			if (!imports.length) { delete bundle[fileName]; }
+			// I'm pretty sure this test is only valid when using
+			// rollup-plugin-iife
+			if (bundle[fileName] && /^\s*\(function\s*\(\)\s*\{\s*\}\)\(\);\s*$/g.test(bundle[fileName].code)) { delete bundle[fileName]; }
+			delete bundle[((suppressed.replace('\0', '_')) + ".js")];
+			// Get rid of empty bundles when using non-javascript files
+			// as entry points
+			for (var i = 0, list = Object.entries(bundle); i < list.length; i += 1) {
+				var ref = list[i];
+				var name = ref[0];
+				var chunk = ref[1];
+
+				if (imports.includes(chunk.facadeModuleId) && chunk.isEntry) {
+					delete bundle[name];
+				}
+			}
+		},
+	};
+}
+
+export default entryGlob;
 //# sourceMappingURL=index.esm.js.map

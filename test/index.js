@@ -19,6 +19,10 @@ const outputB = 'exports.b = b;';
 const outputC = 'console.log("La la la!");';
 
 
+const onwarn = (warning) => {
+	if (['EMPTY_BUNDLE'].includes(warning.code)) return;
+	throw warning;
+};
 const codeIncludes = (output, string) => output.map(({ code }) => code.includes(string)).some((result) => result);
 const codeDoesNotInclude = (output, string) => output.map(({ code }) => code.includes(string)).every((result) => !result);
 const chunkIncludes = (output, chunkName, string) => output[output.map(({ name }) => name).indexOf(chunkName)].code.includes(string);
@@ -28,6 +32,7 @@ const fileNamesAre = (output, fileNames, length) => output.length === length && 
 const run = (entries = [], fileName, options = {}, chunks = {}) => rollup({
 	input: entries,
 	manualChunks: chunks,
+	onwarn,
 	plugins: [plugin({ fileName: fileName || 'bundle', ...options })],
 }).then((bundle) => bundle.generate({ format: 'cjs', chunkFileNames: '[name].js' }))
 	.then((output) => {

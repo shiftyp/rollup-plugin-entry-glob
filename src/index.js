@@ -37,7 +37,7 @@ export default function entryGlob(options) {
 		name,
 
 		options(config) {
-			const ret = [module, suppressed];
+			const ret = [];
 			const chunks = {};
 			if (config.manualChunks) {
 				for (let [ chunk, patterns ] of Object.entries(config.manualChunks)) {
@@ -54,12 +54,14 @@ export default function entryGlob(options) {
 					.forEach((path) => {
 						if (!chunked.includes(path)) {
 							if (filter(path)) imports.push(path);
-							ret.push(path);
+							else ret.push(path);
 						}
 					});
 			}
 			config.manualChunks = chunks;
-			config.input = sortArray(ret);
+			config.input = Object.entries(chunks).length
+				? [module, suppressed, ...sortArray(ret)]
+				: [module, ...sortArray(ret)];
 		},
 
 		resolveId(id) {
@@ -86,7 +88,7 @@ export default function entryGlob(options) {
 			if (!imports.length) delete bundle[fileName];
 			// I'm pretty sure this test is only valid when using
 			// rollup-plugin-iife
-			if (/\(function\s*\(\)\s*\{\s*\}\)\(\);/g.test(bundle[fileName].code)) delete bundle[fileName];
+			if (bundle[fileName] && /^\s*\(function\s*\(\)\s*\{\s*\}\)\(\);\s*$/g.test(bundle[fileName].code)) delete bundle[fileName];
 			delete bundle[`${suppressed.replace('\0', '_')}.js`];
 			// Get rid of empty bundles when using non-javascript files
 			// as entry points

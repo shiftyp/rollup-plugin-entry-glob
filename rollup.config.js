@@ -1,5 +1,4 @@
 import buble from 'rollup-plugin-buble';
-import { terser } from 'rollup-plugin-terser';
 import filesize from 'rollup-plugin-filesize';
 
 
@@ -27,11 +26,6 @@ module.exports = {
 				asyncAwait: false,
 				dangerousForOf: true,
 			},
-		}),
-		terser({
-			compress: true,
-			mangle: true,
-			sourcemap: true,
 		}),
 		filesize(),
 	],
