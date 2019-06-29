@@ -1,7 +1,7 @@
 {
   "name": "rollup-plugin-entry-glob",
-  "version": "0.3.0-alpha0",
-  "description": "Flexible way to use globs as entry points for rollup",
+  "version": "0.3.0-rc0",
+  "description": "Flexible way to use globs as entry points and manualChunks for rollup",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "scripts": {
@@ -10,7 +10,8 @@
   },
   "keywords": [
     "rollup-plugin",
-    "glob"
+    "glob",
+    "entry"
   ],
   "author": "Tomas Ravinskas",
   "license": "MIT",
@@ -21,14 +22,25 @@
     "esm": "^3.2.25",
     "mocha": "^6.1.4",
     "rollup": "^1.16.1",
-    "rollup-plugin-buble": "^0.19.6",
-    "rollup-plugin-terser": "^5.0.0"
+    "rollup-plugin-buble": "^0.19.6"
   },
   "dependencies": {
     "matched": "^4.0.0",
-    "rollup-pluginutils": "^2.8.1"
+    "rollup-pluginutils": "^2.8.1",
+    "rollup-plugin-filesize": "^6.1.1"
   },
   "optionalDependencies": {
     "rollup-plugin-filesize": "^6.1.1"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OzymandiasTheGreat/rollup-plugin-entry-glob.git"
+  },
+  "bugs": {
+    "url": "https://github.com/OzymandiasTheGreat/rollup-plugin-entry-glob/issues"
+  },
+  "homepage": "https://github.com/OzymandiasTheGreat/rollup-plugin-entry-glob#readme"
 }
