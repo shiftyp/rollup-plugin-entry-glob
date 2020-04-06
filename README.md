@@ -1,5 +1,11 @@
 # rollup-plugin-entry-glob
 
+-------------------
+
+If you find this software useful, [consider becoming a patron](https://www.patreon.com/ozymandias)
+
+-------------------
+
 This plugin is based on excellent, if limited, [rollup-plugin-multi-entry](https://github.com/rollup/rollup-plugin-multi-entry).
 
 `rollup-plugin-entry-glob` allows you to specify globs as entry points (or `manualChunks`) for your rollup bundle. Unlike the afformention plugin, you can choose which entry points to combine and which ones to use code-splitting for.
