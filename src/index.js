@@ -18,7 +18,7 @@ const sortArray = (arr) => {
 };
 
 
-export default function entryGlob(options) {
+export default function entryGlob(options = {}) {
 	const module = options.fileName
 		? `\0${options.fileName}`
 		: entry;
@@ -84,7 +84,7 @@ export default function entryGlob(options) {
 
 		async generateBundle(config, bundle) {
 			const fileName = `${module.replace('\0', '_')}.js`;
-			bundle[fileName].fileName = `${module.replace('\0', '')}.js`;
+			if (bundle[fileName]) bundle[fileName].fileName = `${module.replace('\0', '')}.js`;
 			if (!imports.length) delete bundle[fileName];
 			// I'm pretty sure this test is only valid when using
 			// rollup-plugin-iife

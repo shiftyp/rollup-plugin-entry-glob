@@ -18,6 +18,8 @@ var sortArray = function (arr) {
 
 
 function entryGlob(options) {
+	if ( options === void 0 ) options = {};
+
 	var module = options.fileName
 		? ("\u0000" + (options.fileName))
 		: entry;
@@ -89,7 +91,7 @@ function entryGlob(options) {
 
 		generateBundle: async function generateBundle(config, bundle) {
 			var fileName = (module.replace('\0', '_')) + ".js";
-			bundle[fileName].fileName = (module.replace('\0', '')) + ".js";
+			if (bundle[fileName]) { bundle[fileName].fileName = (module.replace('\0', '')) + ".js"; }
 			if (!imports.length) { delete bundle[fileName]; }
 			// I'm pretty sure this test is only valid when using
 			// rollup-plugin-iife
